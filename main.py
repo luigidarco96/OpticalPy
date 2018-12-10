@@ -65,14 +65,14 @@ if not cam.isOpened:
     exit(0)
 
 # Init the background subtract
-bgimg = bgsub(cv2.bgsegm.createBackgroundSubtractorGMG(1,0.9))
+bgimg = bgsub(cv2.bgsegm.createBackgroundSubtractorGMG(1, 0.9))
 
 # Save video
 if args["save"]:
     log.info("Start recording video "+args["save"])
     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-    writer = cv2.VideoWriter(
-        args["save"]+".avi", fourcc, 5, (img.shape[1], img.shape[0]), True)
+    writer = None
+
 
 yolo = yolo(net, LABELS)
 
@@ -111,7 +111,7 @@ while True:
 
     indices = cv2.dnn.NMSBoxes(
         boxes, confidences, conf_threshold, nms_threshold)
-
+    
     for i in indices:
         i = i[0]
         box = boxes[i]
@@ -125,7 +125,11 @@ while True:
     cv2.imshow("OpticalPy", img)
     cv2.imshow("bgsub", bgsubimg)
     # Save video
+
     if args["save"]:
+        if writer is None:
+            writer = cv2.VideoWriter(
+                args["save"]+".avi", fourcc, 5, (img.shape[1], img.shape[0]), True)
         writer.write(img)
     keyboard = cv2.waitKey(30)
     if keyboard == 'q' or keyboard == 27:
