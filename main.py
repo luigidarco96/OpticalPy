@@ -8,6 +8,17 @@ from bgsub import bgsub
 from yolo import yolo
 import numpy as np
 
+def draw_flow(img, flow, step=8):
+    h, w = img.shape[:2]
+    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
+    hf, wf = flow.shape[:2]
+    yf, xf = np.mgrid[step/2:hf:step, step/2:wf:step].reshape(2,-1).astype(int)
+    fx, fy = flow[yf,xf].T
+    lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
+    lines = np.int32(lines + 0.5)
+    vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    cv2.polylines(vis, lines, 0, (0, 255, 0))
+    return vis
 
 def create_logger(name):
     formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
@@ -76,6 +87,9 @@ if args["save"]:
 
 yolo = yolo(net, LABELS)
 
+_, first = cam.read()
+prvs = cv2.cvtColor(first,cv2.COLOR_BGR2GRAY)
+
 while True:
     ret, img = cam.read()
     if ret == False:
@@ -84,7 +98,10 @@ while True:
 
     bgsubimg = bgimg.get_bgsub_frame(img)
     outs = yolo.create_blob(bgsubimg)
-
+    
+    next = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    
     class_ids = []
     confidences = []
     boxes = []
@@ -121,11 +138,18 @@ while True:
         h = box[3]
         yolo.draw_prediction(img, class_ids[i], confidences[i], round(
             x), round(y), round(x + w), round(y + h))
+        x = int(x)
+        y = int(y)
+        w = int(w)
+        h = int(h)
+        #flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
+        #draw_flow(img, flow_cut)
+        
 
     cv2.imshow("OpticalPy", img)
     cv2.imshow("bgsub", bgsubimg)
-    # Save video
 
+    # Save video
     if args["save"]:
         if writer is None:
             writer = cv2.VideoWriter(
