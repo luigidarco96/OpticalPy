@@ -141,11 +141,18 @@ while True:
         h = box[3]
         yolo.draw_prediction(img, class_ids[i], confidences[i], round(
             x), round(y), round(x + w), round(y + h))
-        print(yolo.get_label(class_ids[i]))
         x = int(x)
         y = int(y)
         w = int(w)
         h = int(h)
+        if x < 0:
+            x = 0
+        if x + w > img.shape[0]:
+            w = img.shape[0] - x
+        if y < 0:
+            y = 0
+        if y + h > img.shape[1]:
+            h = img.shape[1] - y
         flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
         name_flow = uuid.uuid4()
         name_directory = yolo.get_label(class_ids[i])
