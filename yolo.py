@@ -25,3 +25,6 @@ class yolo:
                                      swapRB=True, crop=False)
         self.net.setInput(blob)
         return self.net.forward(self.layer_output)
+
+    def get_label(self, class_id):
+        return self.labels[class_id]

@@ -7,6 +7,7 @@ import time
 from bgsub import bgsub
 from yolo import yolo
 import numpy as np
+import uuid
 
 def draw_flow(img, flow, step=8):
     h, w = img.shape[:2]
@@ -90,7 +91,9 @@ yolo = yolo(net, LABELS)
 _, first = cam.read()
 prvs = cv2.cvtColor(first,cv2.COLOR_BGR2GRAY)
 
+numberOfFrame = 0
 while True:
+    numberOfFrame = numberOfFrame + 1
     ret, img = cam.read()
     if ret == False:
         cv2.destroyAllWindows()
@@ -138,16 +141,20 @@ while True:
         h = box[3]
         yolo.draw_prediction(img, class_ids[i], confidences[i], round(
             x), round(y), round(x + w), round(y + h))
+        print(yolo.get_label(class_ids[i]))
         x = int(x)
         y = int(y)
         w = int(w)
         h = int(h)
-        #flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
-        #draw_flow(img, flow_cut)
+        flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
+        name_flow = uuid.uuid4()
+        name_directory = yolo.get_label(class_ids[i])
+        save_path = "Dataset/%s/%s" % (name_directory, name_flow)
+        np.save(save_path, flow_cut)
         
 
     cv2.imshow("OpticalPy", img)
-    cv2.imshow("bgsub", bgsubimg)
+    #cv2.imshow("bgsub", bgsubimg)
 
     # Save video
     if args["save"]:
