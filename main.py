@@ -10,11 +10,10 @@ import numpy as np
 import uuid
 
 def draw_flow(img, flow, step=8):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     h, w = img.shape[:2]
     y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
-    hf, wf = flow.shape[:2]
-    yf, xf = np.mgrid[step/2:hf:step, step/2:wf:step].reshape(2,-1).astype(int)
-    fx, fy = flow[yf,xf].T
+    fx, fy = flow[y,x].T
     lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
     lines = np.int32(lines + 0.5)
     vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -154,6 +153,9 @@ while True:
         if y + h > img.shape[1]:
             h = img.shape[1] - y
         flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
+        flow = np.zeros(flow.shape)
+        flow[y:y+h,x:x+w] = flow_cut
+        img = draw_flow(img,flow)
         name_flow = uuid.uuid4()
         name_directory = yolo.get_label(class_ids[i])
         save_path = "Dataset/%s/%s" % (name_directory, name_flow)
