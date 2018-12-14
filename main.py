@@ -8,6 +8,7 @@ from bgsub import bgsub
 from yolo import yolo
 import numpy as np
 import uuid
+import create_directory
 
 def draw_flow(img, flow, step=8):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -36,6 +37,9 @@ def create_logger(name):
 
 # create a logger
 log = create_logger("opticalPy")
+log.info("Check the dataset folder")
+create_directory.create_folder()
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video",
@@ -45,6 +49,9 @@ ap.add_argument("-s", "--save",
 ap.add_argument("-y", "--yolo",
                 default="yolo-coco",
                 help="base path to YOLO directory")
+ap.add_argument("-sh","--show",
+                default=False,
+                help="show video")
 args = vars(ap.parse_args())
 
 # load the COCO class labels our YOLO model was trained on
@@ -88,7 +95,7 @@ if args["save"]:
 yolo = yolo(net, LABELS)
 
 _, first = cam.read()
-prvs = cv2.cvtColor(first,cv2.COLOR_BGR2GRAY)
+prvs = cv2.cvtColor(cv2.GaussianBlur(first,(21,21),0),cv2.COLOR_BGR2GRAY)
 
 numberOfFrame = 0
 while True:
@@ -101,7 +108,7 @@ while True:
     bgsubimg = bgimg.get_bgsub_frame(img)
     outs = yolo.create_blob(bgsubimg)
     
-    next = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    next = cv2.cvtColor(cv2.GaussianBlur(img,(21,21),0),cv2.COLOR_BGR2GRAY)
     flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
     
     class_ids = []
@@ -153,17 +160,20 @@ while True:
         if y + h > img.shape[1]:
             h = img.shape[1] - y
         flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
-        flow = np.zeros(flow.shape)
-        flow[y:y+h,x:x+w] = flow_cut
-        img = draw_flow(img,flow)
+
+        if args["show"]:
+            flow = np.zeros(flow.shape)
+            flow[y:y+h,x:x+w] = flow_cut
+            img = draw_flow(img,flow)
+
         name_flow = uuid.uuid4()
         name_directory = yolo.get_label(class_ids[i])
         save_path = "Dataset/%s/%s" % (name_directory, name_flow)
         np.save(save_path, flow_cut)
         
 
-    cv2.imshow("OpticalPy", img)
-    #cv2.imshow("bgsub", bgsubimg)
+    if args["show"]:
+        cv2.imshow("OpticalPy", img)
 
     # Save video
     if args["save"]:

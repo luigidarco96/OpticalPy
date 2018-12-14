@@ -1,10 +1,18 @@
 import os
 
-labelsPath = os.path.sep.join(["yolo-coco", "coco.names"])
-LABELS = open(labelsPath).read().strip().split("\n")
+def create_folder():
 
-os.mkdir("Dataset")
+    if not os.path.isdir("Dataset"):
 
-for label in LABELS:
-    name = "Dataset/%s" % label
-    os.mkdir(name)
+        labelsPath = os.path.sep.join(["yolo-coco", "coco.names"])
+        LABELS = open(labelsPath).read().strip().split("\n")
+
+        os.mkdir("Dataset")
+
+        for label in LABELS:
+            name = "Dataset/%s" % label
+            os.mkdir(name)
+
+
+if __name__ == "__main__":
+    create_folder()
