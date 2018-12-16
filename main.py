@@ -11,15 +11,13 @@ import uuid
 import create_directory
 
 def draw_flow(img, flow, step=8):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     h, w = img.shape[:2]
     y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
     fx, fy = flow[y,x].T
     lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
     lines = np.int32(lines + 0.5)
-    vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    cv2.polylines(vis, lines, 0, (0, 255, 0))
-    return vis
+    cv2.polylines(img, lines, 0, (0, 255, 0))
+    return img
 
 def create_logger(name):
     formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
@@ -95,22 +93,25 @@ if args["save"]:
 yolo = yolo(net, LABELS)
 
 _, first = cam.read()
-prvs = cv2.cvtColor(cv2.GaussianBlur(first,(21,21),0),cv2.COLOR_BGR2GRAY)
+prvs = cv2.cvtColor(first, cv2.COLOR_BGR2GRAY)
 
 numberOfFrame = 0
 while True:
     numberOfFrame = numberOfFrame + 1
     ret, img = cam.read()
+    #flip the image for better visualize it
+    img = cv2.flip(img,1)
     if ret == False:
         cv2.destroyAllWindows()
         sys.exit(0)
 
     bgsubimg = bgimg.get_bgsub_frame(img)
     outs = yolo.create_blob(bgsubimg)
-    
-    next = cv2.cvtColor(cv2.GaussianBlur(img,(21,21),0),cv2.COLOR_BGR2GRAY)
-    flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-    
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    flow = cv2.calcOpticalFlowFarneback(prvs, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    prvs = gray
+
     class_ids = []
     confidences = []
     boxes = []
@@ -137,7 +138,7 @@ while True:
 
     indices = cv2.dnn.NMSBoxes(
         boxes, confidences, conf_threshold, nms_threshold)
-    
+
     for i in indices:
         i = i[0]
         box = boxes[i]
@@ -147,30 +148,32 @@ while True:
         h = box[3]
         yolo.draw_prediction(img, class_ids[i], confidences[i], round(
             x), round(y), round(x + w), round(y + h))
-        x = int(x)
-        y = int(y)
-        w = int(w)
-        h = int(h)
+        x = round(x)
+        y = round(y)
+        w = round(w)
+        h = round(h)
+
         if x < 0:
             x = 0
-        if x + w > img.shape[0]:
-            w = img.shape[0] - x
+        if x + w > img.shape[1]:
+            w = img.shape[1] - x
         if y < 0:
             y = 0
-        if y + h > img.shape[1]:
-            h = img.shape[1] - y
-        flow_cut = flow[y:(y+h),[range(x,(x+w))]][:,0,:,:]
+        if y + h > img.shape[0]:
+            h = img.shape[0] - y
 
+        flow_cut = flow[y:(y+h),x:(x+w)]
+        
         if args["show"]:
             flow = np.zeros(flow.shape)
-            flow[y:y+h,x:x+w] = flow_cut
+            flow[y:(y+h),x:(x+w)] = flow_cut
             img = draw_flow(img,flow)
 
         name_flow = uuid.uuid4()
         name_directory = yolo.get_label(class_ids[i])
         save_path = "Dataset/%s/%s" % (name_directory, name_flow)
         np.save(save_path, flow_cut)
-        
+
 
     if args["show"]:
         cv2.imshow("OpticalPy", img)
@@ -181,9 +184,12 @@ while True:
             writer = cv2.VideoWriter(
                 args["save"]+".avi", fourcc, 5, (img.shape[1], img.shape[0]), True)
         writer.write(img)
+
     keyboard = cv2.waitKey(30)
     if keyboard == 'q' or keyboard == 27:
+        log.info("exit from main")
         break
+
 
 cam.release()
 cv2.destroyAllWindows()
