@@ -10,14 +10,17 @@ import numpy as np
 import uuid
 import create_directory
 
-def draw_flow(img, flow, step=8):
-    h, w = img.shape[:2]
-    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
-    fx, fy = flow[y,x].T
-    lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
+
+def draw_flow(img, start, shape, flow, step=8):
+    h, w = shape
+    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2, -1).astype(int)
+    fx, fy = flow[y, x].T
+    lines = np.vstack([x+start[1], y+start[0], x+fx +
+                       start[1], y+fy + start[0]]).T.reshape(-1, 2, 2)
     lines = np.int32(lines + 0.5)
     cv2.polylines(img, lines, 0, (0, 255, 0))
     return img
+
 
 def create_logger(name):
     formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
@@ -47,7 +50,7 @@ ap.add_argument("-s", "--save",
 ap.add_argument("-y", "--yolo",
                 default="yolo-coco",
                 help="base path to YOLO directory")
-ap.add_argument("-sh","--show",
+ap.add_argument("-sh", "--show",
                 default=False,
                 help="show video")
 args = vars(ap.parse_args())
@@ -70,7 +73,7 @@ if args.get("video", None) is None:
     log.info("loading webcam")
     cam = cv2.VideoCapture(0)
     # wait a bit for camera sensor warming up
-    time.sleep(2.0)
+    time.sleep(0.2)
 else:
     log.info("loading "+args["video"])
     cam = cv2.VideoCapture(args["video"])
@@ -99,8 +102,8 @@ numberOfFrame = 0
 while True:
     numberOfFrame = numberOfFrame + 1
     ret, img = cam.read()
-    #flip the image for better visualize it
-    img = cv2.flip(img,1)
+    # flip the image for better visualize it
+    img = cv2.flip(img, 1)
     if ret == False:
         cv2.destroyAllWindows()
         sys.exit(0)
@@ -109,7 +112,8 @@ while True:
     outs = yolo.create_blob(bgsubimg)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    flow = cv2.calcOpticalFlowFarneback(prvs, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    flow = cv2.calcOpticalFlowFarneback(
+        prvs, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
     prvs = gray
 
     class_ids = []
@@ -162,18 +166,15 @@ while True:
         if y + h > img.shape[0]:
             h = img.shape[0] - y
 
-        flow_cut = flow[y:(y+h),x:(x+w)]
-        
+        flow_cut = flow[y:(y+h), x:(x+w)]
+
         if args["show"]:
-            flow = np.zeros(flow.shape)
-            flow[y:(y+h),x:(x+w)] = flow_cut
-            img = draw_flow(img,flow)
+            img = draw_flow(img, (y, x), (h, w), flow_cut)
 
         name_flow = uuid.uuid4()
         name_directory = yolo.get_label(class_ids[i])
         save_path = "Dataset/%s/%s" % (name_directory, name_flow)
         np.save(save_path, flow_cut)
-
 
     if args["show"]:
         cv2.imshow("OpticalPy", img)
