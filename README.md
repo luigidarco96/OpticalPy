@@ -13,7 +13,7 @@ type ```python main.py``` to start the program
 You can parse some argument for change the behaviour of application.
 * ```-v``` select an input video
 * ```-s``` select a path to save the output
-* ```-show True``` show the result in realt time
+* ```-sh True``` show the result in realt time
 * ```-y``` change yolo path folder
 ## Dependecy
 * opencv-python
