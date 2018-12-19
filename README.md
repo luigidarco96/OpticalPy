@@ -3,6 +3,7 @@ OpticalPy is a dataset generator which use:
 * background subtraction
 * yolo object detection
 * farneback's optical flow
+
 For detect only movement object in a scene and extract only optical flow matrix (as numpy) and detect class with yolo.
 
 ## How to use it
