@@ -84,7 +84,7 @@ if not cam.isOpened:
     exit(0)
 
 # Init the background subtract
-bgimg = bgsub(cv2.bgsegm.createBackgroundSubtractorGMG(1, 0.9))
+bgimg = bgsub(cv2.createBackgroundSubtractorMOG2(history=20, varThreshold=25, detectShadows=True))
 
 # Save video
 if args["save"]:
